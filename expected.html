@@ -49,9 +49,9 @@
   <h1>🌏 해외 생산 공장별 예상 출고량</h1>
   <div class="stats">
     <div class="stat-item"><div class="stat-val">91</div><div class="stat-lbl">집계 공장 수</div></div>
-    <div class="stat-item"><div class="stat-val">2,583,422</div><div class="stat-lbl">총 예상 출고량 (pcs)</div></div>
+    <div class="stat-item"><div class="stat-val">—</div><div class="stat-lbl">총 예상 출고량 (pcs)</div></div>
     <div class="stat-item"><div class="stat-val">11</div><div class="stat-lbl">주소 미확인</div></div>
-    <div class="stat-item"><div class="stat-val">240,802</div><div class="stat-lbl">미확인 물량 (pcs)</div></div>
+    <div class="stat-item"><div class="stat-val">—</div><div class="stat-lbl">미확인 물량 (pcs)</div></div>
   </div>
 </div>
 <div class="main">
@@ -173,7 +173,7 @@ document.getElementById('regionList').innerHTML = regions.map(r => `
     <div class="region-dot" style="background:${r.color}"></div>
     <div class="region-name">${r.region}<br><span style="font-size:10px;color:#888">${r.count}개 공장</span></div>
     <div class="region-bar-wrap"><div class="region-bar" style="background:${r.color};width:${Math.round(r.volume/maxVol*100)}%"></div></div>
-    <div class="region-vol">${r.volume.toLocaleString()}<br><span style="color:#aaa;font-size:10px">${r.pct}%</span></div>
+    <div class="region-vol"><span style="font-size:13px;font-weight:700;color:#444">${r.pct}%</span></div>
   </div>`).join('');
 
 // Excluded list
