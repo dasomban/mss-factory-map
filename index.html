@@ -35,7 +35,9 @@
   .excluded-reason { color:#e53935; font-size:10px; white-space:nowrap; }
   .legend { position:absolute; bottom:28px; left:12px; background:white; border-radius:8px; padding:12px 14px; box-shadow:0 2px 10px rgba(0,0,0,.15); z-index:1000; max-width:230px; }
   .legend h4 { font-size:12px; font-weight:700; margin-bottom:8px; color:#333; }
-  .legend-item { display:flex; align-items:center; gap:7px; margin-bottom:5px; font-size:11px; }
+  .legend-item { display:flex; align-items:center; gap:7px; margin-bottom:5px; font-size:11px; cursor:pointer; padding:2px 4px; border-radius:5px; }
+  .legend-item:hover { background:#f5f5f7; }
+  .legend-item.active { background:#FFF8E1; box-shadow:inset 0 0 0 1px #FFD54F; }
   .legend-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
   .popup-name { font-weight:700; font-size:13px; margin-bottom:4px; }
   .popup-code { font-size:11px; color:#666; margin-bottom:3px; }
@@ -172,9 +174,9 @@ regions.slice(0,5).forEach(r => {
 // Legend
 document.getElementById('legend').innerHTML =
   '<h4>권역 범례</h4>' + regions.map(r =>
-    `<div class="legend-item"><div class="legend-dot" style="background:${r.color}"></div><span>${r.region}</span></div>`
+    `<div class="legend-item" data-region="${r.region}" title="클릭하면 이 권역만 지도에 표시"><div class="legend-dot" style="background:${r.color}"></div><span>${r.region}</span></div>`
   ).join('') +
-  '<div class="legend-item" style="margin-top:6px;padding-top:6px;border-top:1px solid #eee;"><div class="legend-dot" style="background:#bbb;border:1.5px dashed #616161;"></div><span>FOB 신규 공장 (물량 미확정)</span></div>';
+  '<div class="legend-item" id="fobLegendItem" style="margin-top:6px;padding-top:6px;border-top:1px solid #eee;" title="클릭하면 FOB 공장만 지도에 표시"><div class="legend-dot" style="background:#bbb;border:1.5px dashed #616161;"></div><span>FOB 공장 (9개)</span></div>';
 
 // Bar chart
 new Chart(document.getElementById('barChart').getContext('2d'), {
@@ -250,6 +252,10 @@ function applyFilter() {
   document.querySelectorAll('.region-row').forEach(row => {
     row.classList.toggle('active', activeFilter?.type === 'region' && row.dataset.region === activeFilter.region);
   });
+  document.getElementById('fobLegendItem')?.classList.toggle('active', activeFilter?.type === 'fob');
+  document.querySelectorAll('.legend-item[data-region]').forEach(item => {
+    item.classList.toggle('active', activeFilter?.type === 'region' && item.dataset.region === activeFilter.region);
+  });
 
   if (activeFilter) {
     const matches = allMarkers.filter(m =>
@@ -271,6 +277,19 @@ document.getElementById('fobHeader').addEventListener('click', () => {
 document.querySelectorAll('.region-row').forEach(row => {
   row.addEventListener('click', () => {
     const region = row.dataset.region;
+    activeFilter = (activeFilter?.type === 'region' && activeFilter.region === region) ? null : {type:'region', region};
+    applyFilter();
+  });
+});
+
+document.getElementById('fobLegendItem')?.addEventListener('click', () => {
+  activeFilter = activeFilter?.type === 'fob' ? null : {type:'fob'};
+  applyFilter();
+});
+
+document.querySelectorAll('.legend-item[data-region]').forEach(item => {
+  item.addEventListener('click', () => {
+    const region = item.dataset.region;
     activeFilter = (activeFilter?.type === 'region' && activeFilter.region === region) ? null : {type:'region', region};
     applyFilter();
   });
