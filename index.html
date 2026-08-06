@@ -22,7 +22,9 @@
   .sidebar-section { padding:16px; border-bottom:1px solid #eee; }
   .sidebar-section h3 { font-size:13px; font-weight:700; color:#1a237e; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:12px; }
   .chart-container { padding:12px 16px 8px; }
-  .region-row { display:flex; align-items:center; gap:8px; margin-bottom:10px; }
+  .region-row { display:flex; align-items:center; gap:8px; margin-bottom:10px; cursor:pointer; padding:4px; border-radius:6px; }
+  .region-row:hover { background:#f5f5f7; }
+  .region-row.active { background:#FFF8E1; box-shadow:inset 0 0 0 1px #FFD54F; }
   .region-dot { width:12px; height:12px; border-radius:50%; flex-shrink:0; }
   .region-name { font-size:12px; flex:1; line-height:1.3; }
   .region-bar-wrap { width:90px; background:#eee; border-radius:3px; height:8px; }
@@ -129,7 +131,7 @@ factories.forEach(f => {
     <div class="popup-vol">출고량: ${f.volume.toLocaleString()} pcs</div>
     <div><span class="popup-region" style="background:${color}">${f.region}</span>${f.fob ? '<span class="fob-badge">FOB 공장</span>' : ''}</div>
   `, {maxWidth:280});
-  allMarkers.push({marker: circle, isFob: !!f.fob, lat: f.lat, lon: f.lon});
+  allMarkers.push({marker: circle, isFob: !!f.fob, region: f.region, lat: f.lat, lon: f.lon});
 });
 
 // FOB 신규 공장 (물량 미확정) 마커
@@ -147,7 +149,7 @@ fobNew.forEach(f => {
     <div class="popup-vol">출고량: -</div>
     <div><span class="popup-region" style="background:${color}">${f.region}</span><span class="fob-badge">FOB 공장</span></div>
   `, {maxWidth:280});
-  allMarkers.push({marker: circle, isFob: true, lat: f.lat, lon: f.lon});
+  allMarkers.push({marker: circle, isFob: true, region: f.region, lat: f.lat, lon: f.lon});
 });
 
 // 상위 5개 항구 레이블
@@ -205,7 +207,7 @@ new Chart(document.getElementById('barChart').getContext('2d'), {
 // Region list
 const maxVol = regions[0].volume;
 document.getElementById('regionList').innerHTML = regions.map(r => `
-  <div class="region-row">
+  <div class="region-row" data-region="${r.region}" title="클릭하면 이 권역만 지도에 표시">
     <div class="region-dot" style="background:${r.color}"></div>
     <div class="region-name">${r.region}<br><span style="font-size:10px;color:#888">${r.count}개 공장</span></div>
     <div class="region-bar-wrap"><div class="region-bar" style="background:${r.color};width:${Math.round(r.volume/maxVol*100)}%"></div></div>
@@ -230,26 +232,48 @@ document.getElementById('excludedList').innerHTML = excluded.map(e => `
     <div class="excluded-reason">${e.reason}</div>
   </div>`).join('');
 
-// FOB 지도 필터 토글
+// 지도 필터 (FOB 헤더 / 권역별 상세 클릭)
 const initialView = { center: map.getCenter(), zoom: map.getZoom() };
-let fobFilterActive = false;
-document.getElementById('fobHeader').addEventListener('click', () => {
-  fobFilterActive = !fobFilterActive;
-  document.getElementById('fobHeader').classList.toggle('active', fobFilterActive);
-  document.querySelector('#fobHeader .hint').textContent = fobFilterActive ? '필터 해제하려면 클릭' : '클릭: 지도 필터';
+let activeFilter = null; // null | {type:'fob'} | {type:'region', region}
 
-  allMarkers.forEach(({marker, isFob}) => {
-    const show = !fobFilterActive || isFob;
+function applyFilter() {
+  allMarkers.forEach(({marker, isFob, region}) => {
+    let show = true;
+    if (activeFilter?.type === 'fob') show = isFob;
+    else if (activeFilter?.type === 'region') show = region === activeFilter.region;
     if (show && !map.hasLayer(marker)) marker.addTo(map);
     if (!show && map.hasLayer(marker)) map.removeLayer(marker);
   });
 
-  if (fobFilterActive) {
-    const bounds = L.latLngBounds(allMarkers.filter(m => m.isFob).map(m => [m.lat, m.lon]));
-    map.fitBounds(bounds, {padding:[40,40]});
+  document.getElementById('fobHeader').classList.toggle('active', activeFilter?.type === 'fob');
+  document.querySelector('#fobHeader .hint').textContent = activeFilter?.type === 'fob' ? '필터 해제하려면 클릭' : '클릭: 지도 필터';
+  document.querySelectorAll('.region-row').forEach(row => {
+    row.classList.toggle('active', activeFilter?.type === 'region' && row.dataset.region === activeFilter.region);
+  });
+
+  if (activeFilter) {
+    const matches = allMarkers.filter(m =>
+      activeFilter.type === 'fob' ? m.isFob : m.region === activeFilter.region
+    );
+    if (matches.length) {
+      map.fitBounds(L.latLngBounds(matches.map(m => [m.lat, m.lon])), {padding:[40,40]});
+    }
   } else {
     map.setView(initialView.center, initialView.zoom);
   }
+}
+
+document.getElementById('fobHeader').addEventListener('click', () => {
+  activeFilter = activeFilter?.type === 'fob' ? null : {type:'fob'};
+  applyFilter();
+});
+
+document.querySelectorAll('.region-row').forEach(row => {
+  row.addEventListener('click', () => {
+    const region = row.dataset.region;
+    activeFilter = (activeFilter?.type === 'region' && activeFilter.region === region) ? null : {type:'region', region};
+    applyFilter();
+  });
 });
 </script>
 </body>
