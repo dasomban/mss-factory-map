@@ -46,6 +46,10 @@
   .fob-tag { font-size:10px; white-space:nowrap; font-weight:700; }
   .fob-tag.new { color:#FF8F00; }
   .fob-tag.known { color:#1565C0; }
+  .fob-header { cursor:pointer; user-select:none; display:flex; align-items:center; justify-content:space-between; gap:6px; }
+  .fob-header:hover { opacity:0.75; }
+  .fob-header .hint { font-weight:400; font-size:9px; color:#999; text-transform:none; letter-spacing:0; white-space:nowrap; }
+  .fob-header.active .hint { color:#FF8F00; font-weight:700; }
 </style>
 </head>
 <body>
@@ -75,7 +79,7 @@
       <div id="regionList"></div>
     </div>
     <div class="sidebar-section">
-      <h3>FOB 공장 (9개)</h3>
+      <h3 id="fobHeader" class="fob-header"><span>FOB 공장 (9개)</span><span class="hint">클릭: 지도 필터</span></h3>
       <div id="fobList"></div>
     </div>
     <div class="sidebar-section">
@@ -109,6 +113,8 @@ function getRadius(v) {
   return 5;
 }
 
+const allMarkers = []; // {marker, isFob}
+
 factories.forEach(f => {
   const color = regionColors[f.region] || '#999';
   const circle = L.circleMarker([f.lat, f.lon], {
@@ -123,6 +129,7 @@ factories.forEach(f => {
     <div class="popup-vol">출고량: ${f.volume.toLocaleString()} pcs</div>
     <div><span class="popup-region" style="background:${color}">${f.region}</span>${f.fob ? '<span class="fob-badge">FOB 공장</span>' : ''}</div>
   `, {maxWidth:280});
+  allMarkers.push({marker: circle, isFob: !!f.fob, lat: f.lat, lon: f.lon});
 });
 
 // FOB 신규 공장 (물량 미확정) 마커
@@ -140,6 +147,7 @@ fobNew.forEach(f => {
     <div class="popup-vol">출고량: -</div>
     <div><span class="popup-region" style="background:${color}">${f.region}</span><span class="fob-badge">FOB 공장</span></div>
   `, {maxWidth:280});
+  allMarkers.push({marker: circle, isFob: true, lat: f.lat, lon: f.lon});
 });
 
 // 상위 5개 항구 레이블
@@ -221,6 +229,28 @@ document.getElementById('excludedList').innerHTML = excluded.map(e => `
     <div class="excluded-name">${e.name} <span style="color:#888">(CODE: ${e.code})</span></div>
     <div class="excluded-reason">${e.reason}</div>
   </div>`).join('');
+
+// FOB 지도 필터 토글
+const initialView = { center: map.getCenter(), zoom: map.getZoom() };
+let fobFilterActive = false;
+document.getElementById('fobHeader').addEventListener('click', () => {
+  fobFilterActive = !fobFilterActive;
+  document.getElementById('fobHeader').classList.toggle('active', fobFilterActive);
+  document.querySelector('#fobHeader .hint').textContent = fobFilterActive ? '필터 해제하려면 클릭' : '클릭: 지도 필터';
+
+  allMarkers.forEach(({marker, isFob}) => {
+    const show = !fobFilterActive || isFob;
+    if (show && !map.hasLayer(marker)) marker.addTo(map);
+    if (!show && map.hasLayer(marker)) map.removeLayer(marker);
+  });
+
+  if (fobFilterActive) {
+    const bounds = L.latLngBounds(allMarkers.filter(m => m.isFob).map(m => [m.lat, m.lon]));
+    map.fitBounds(bounds, {padding:[40,40]});
+  } else {
+    map.setView(initialView.center, initialView.zoom);
+  }
+});
 </script>
 </body>
 </html>
